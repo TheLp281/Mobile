@@ -24,11 +24,16 @@ jobs:
       - name: Install Node.js using NVM
         run: |
           curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-          source ~/.bashrc
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
           nvm install --lts
 
       - name: Install React Native CLI
-        run: npm install --global react-native-cli
+        run: |
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          npm install --global react-native-cli
 
       - name: Install Android SDK
         run: |
@@ -46,13 +51,21 @@ jobs:
         run: source $GITHUB_ENV
 
       - name: Accept Android licenses
-        run: yes | sdkmanager --licenses
+        run: |
+          export ANDROID_HOME="$HOME/Android/Sdk"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          yes | sdkmanager --licenses
 
       - name: Install Android SDK components
-        run: sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+        run: |
+          export ANDROID_HOME="$HOME/Android/Sdk"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
       - name: Create React Native app
         run: |
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npx react-native init SampleApp
           cd SampleApp
           echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
