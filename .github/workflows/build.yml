@@ -24,7 +24,7 @@ jobs:
       - name: Install Node.js using NVM
         run: |
           curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
-          source ~/.nvm/nvm.sh
+          source ~/.bashrc
           nvm install --lts
 
       - name: Install React Native CLI
@@ -39,27 +39,35 @@ jobs:
           unzip cmdline-tools.zip -d "$SDK_DIR/cmdline-tools"
           mv "$SDK_DIR/cmdline-tools/cmdline-tools" "$SDK_DIR/cmdline-tools/latest"
           rm cmdline-tools.zip
-          echo "export ANDROID_HOME=$SDK_DIR" >> ~/.bashrc
-          echo "export PATH=\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/platform-tools:\$ANDROID_HOME/emulator:\$PATH" >> ~/.bashrc
-          source ~/.bashrc
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+          echo "export ANDROID_HOME=$SDK_DIR" >> $GITHUB_ENV
+          echo "export PATH=$SDK_DIR/cmdline-tools/latest/bin:$SDK_DIR/platform-tools:$SDK_DIR/emulator:$PATH" >> $GITHUB_ENV
+
+      - name: Load environment variables
+        run: source $GITHUB_ENV
+
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install Android SDK components
+        run: sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
       - name: Create React Native app
         run: |
           npx react-native init SampleApp
           cd SampleApp
-          echo "sdk.dir=$SDK_DIR" > android/local.properties
+          echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
 
       - name: Generate keystore
         run: |
+          cd SampleApp
           keytool -genkeypair -v -storetype PKCS12 -keystore my-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-key-alias -dname "CN=Your Name, OU=Your Org, O=Your Company, L=Your City, S=Your State, C=Your Country" -storepass yourpassword -keypass yourpassword
           mv my-release-key.jks android/app/
 
       - name: Configure Gradle signing
         run: |
+          cd SampleApp
           cat <<EOF >> android/app/build.gradle
-          
+
           android {
               signingConfigs {
                   release {
@@ -79,11 +87,11 @@ jobs:
 
       - name: Build release APK
         run: |
-          cd android
+          cd SampleApp/android
           ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
           name: app-release.apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: SampleApp/android/app/build/outputs/apk/release/app-release.apk
