@@ -29,12 +29,6 @@ jobs:
           [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
           nvm install --lts
 
-      - name: Install React Native CLI
-        run: |
-          export NVM_DIR="$HOME/.nvm"
-          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          npm install --global react-native-cli
-
       - name: Install Android SDK
         run: |
           ANDROID_SDK_URL="https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
@@ -66,7 +60,7 @@ jobs:
         run: |
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          npx react-native init SampleApp
+          npx react-native@latest init SampleApp
           cd SampleApp
           echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
 
