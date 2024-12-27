@@ -28,14 +28,10 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
-          java-version: '11'
+          java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
-        with:
-          api-level: 31
-          build-tools: '31.0.0'
-          ndk: '23.1.7779620'
+      - name: Install Android SDK and Build Tools
+        run: sudo apt-get update\n          sudo apt-get install -y wget unzip\n          wget https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O cmdline-tools.zip\n          mkdir -p $ANDROID_HOME/cmdline-tools\n          unzip cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools\n          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest\n          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses\n          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \"platform-tools\" \"platforms;android-31\" \"build-tools;31.0.0\"
 
       - name: Create local.properties file
         run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
