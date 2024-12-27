@@ -1,0 +1,61 @@
+name: Build and Release APK
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Install project dependencies
+        run: yarn install
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 31
+          build-tools: '31.0.0'
+          ndk: '23.1.7779620'
+
+      - name: Create local.properties file
+        run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+
+      - name: Build APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: android/app/build/outputs/apk/release/app-release.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: v1.0.0
+          releaseName: "React Native APK Release"
+          prerelease: false
