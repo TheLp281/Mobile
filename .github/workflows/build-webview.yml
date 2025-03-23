@@ -61,13 +61,13 @@ jobs:
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npx @react-native-community/cli init WebViewApp
-          cd WebViewApp
+          cd LiventCord
           echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
           npm install react-native-webview
 
       - name: Add WebView Component
         run: |
-          cd WebViewApp
+          cd LiventCord
           cat <<EOF > App.js
           import React from 'react';
           import { StyleSheet, View } from 'react-native';
@@ -76,7 +76,7 @@ jobs:
           const App = () => {
             return (
               <View style={styles.container}>
-                <WebView source={{ uri: 'https://example.com' }} />
+                <WebView source={{ uri: 'https://liventcord.koyeb.app/app' }} />
               </View>
             );
           };
@@ -92,13 +92,13 @@ jobs:
 
       - name: Generate keystore
         run: |
-          cd WebViewApp
+          cd LiventCord
           keytool -genkeypair -v -storetype PKCS12 -keystore my-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-key-alias -dname "CN=Your Name, OU=Your Org, O=Your Company, L=Your City, S=Your State, C=Your Country" -storepass yourpassword -keypass yourpassword
           mv my-release-key.jks android/app/
 
       - name: Configure Gradle signing
         run: |
-          cd WebViewApp
+          cd LiventCord
           cat <<EOF >> android/app/build.gradle
 
           android {
@@ -120,11 +120,11 @@ jobs:
 
       - name: Build release APK
         run: |
-          cd WebViewApp/android
+          cd LiventCord/android
           ./gradlew assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release.apk
-          path: WebViewApp/android/app/build/outputs/apk/release/app-release.apk
+          path: LiventCord/android/app/build/outputs/apk/release/app-release.apk
