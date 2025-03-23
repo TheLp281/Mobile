@@ -60,7 +60,7 @@ jobs:
         run: |
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          npx @react-native-community/cli init WebViewApp
+          npx @react-native-community/cli init LiventCord
           cd LiventCord
           echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
           npm install react-native-webview
