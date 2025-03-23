@@ -56,14 +56,14 @@ jobs:
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-  - name: Create React Native WebView App
-  run: |
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    npx @react-native-community/cli init WebViewApp
-    cd WebViewApp
-    echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
-    npm install react-native-webview
+      - name: Create React Native WebView App
+        run: |
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          npx @react-native-community/cli init WebViewApp
+          cd WebViewApp
+          echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
+          npm install react-native-webview
 
       - name: Add WebView Component
         run: |
