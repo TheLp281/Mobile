@@ -76,7 +76,7 @@ jobs:
           const App = () => {
             return (
               <View style={styles.container}>
-                <WebView source={{ uri: 'https://yourwebsite.com' }} />
+                <WebView source={{ uri: 'https://example.com' }} />
               </View>
             );
           };
