@@ -1,99 +1,97 @@
-name: Build Flutter WebView APK
+name: Build Flutter Webview APK  
+on:   
+  push:     
+    branches:       
+      - main   
+  pull_request:     
+    branches:       
+      - main  
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+jobs:   
+  build:     
+    runs-on: ubuntu-latest      
+    steps:       
+      - name: Checkout code         
+        uses: actions/checkout@v3        
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+      - name: Install Flutter SDK         
+        run: |           
+          FLUTTER_VERSION="3.16.0"           
+          sudo apt update           
+          sudo apt install -y unzip curl git openjdk-11-jdk           
+          curl -LO https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz           
+          tar -xf flutter_linux_${FLUTTER_VERSION}-stable.tar.xz           
+          echo "export PATH=$PWD/flutter/bin:$PATH" >> $GITHUB_ENV        
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Load Flutter environment         
+        run: source $GITHUB_ENV        
 
-      - name: Install Flutter SDK
-        run: |
-          FLUTTER_VERSION="3.16.0"
-          sudo apt update
-          sudo apt install -y unzip curl git openjdk-11-jdk
-          curl -LO https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz
-          tar -xf flutter_linux_${FLUTTER_VERSION}-stable.tar.xz
-          echo "export PATH=$PWD/flutter/bin:$PATH" >> $GITHUB_ENV
+      - name: Verify Flutter Installation         
+        run: flutter --version        
 
-      - name: Load Flutter environment
-        run: source $GITHUB_ENV
+      - name: Create Flutter WebView App         
+        run: |           
+          flutter create WebViewApp           
+          cd WebViewApp           
+          flutter pub add webview_flutter        
 
-      - name: Verify Flutter Installation
-        run: flutter --version
+      - name: Add WebView Code         
+        run: |           
+          cd WebViewApp/lib           
+          cat <<EOF > main.dart           
+          import 'package:flutter/material.dart';           
+          import 'package:webview_flutter/webview_flutter.dart';            
 
-      - name: Create Flutter WebView App
-        run: |
-          flutter create WebViewApp
-          cd WebViewApp
-          flutter pub add webview_flutter
+          void main() {             
+            runApp(const MyApp());           
+          }            
 
-      - name: Add WebView Code
-        run: |
-          cd WebViewApp/lib
-          cat <<EOF > main.dart
-          import 'package:flutter/material.dart';
-          import 'package:webview_flutter/webview_flutter.dart';
+          class MyApp extends StatelessWidget {             
+            const MyApp({super.key});              
+            
+            @override             
+            Widget build(BuildContext context) {               
+              return const MaterialApp(                 
+                home: WebViewContainer(),               
+              );             
+            }           
+          }            
 
-          void main() {
-            runApp(const MyApp());
-          }
+          class WebViewContainer extends StatefulWidget {             
+            const WebViewContainer({super.key});              
+            
+            @override             
+            State<WebViewContainer> createState() => _WebViewContainerState();           
+          }            
 
-          class MyApp extends StatelessWidget {
-            const MyApp({super.key});
+          class _WebViewContainerState extends State<WebViewContainer> {             
+            late final WebViewController _controller;              
+            
+            @override             
+            void initState() {               
+              super.initState();               
+              _controller = WebViewController()                 
+                ..setJavaScriptMode(JavaScriptMode.unrestricted)                 
+                ..loadRequest(Uri.parse('https://yourwebsite.com'));             
+            }              
+            
+            @override             
+            Widget build(BuildContext context) {               
+              return Scaffold(                 
+                appBar: AppBar(title: const Text('Flutter WebView')),                 
+                body: WebViewWidget(controller: _controller),               
+              );             
+            }           
+          }           
+          EOF        
 
-            @override
-            Widget build(BuildContext context) {
-              return const MaterialApp(
-                home: WebViewContainer(),
-              );
-            }
-          }
+      - name: Build Flutter APK         
+        run: |           
+          cd WebViewApp           
+          flutter build apk --release        
 
-          class WebViewContainer extends StatefulWidget {
-            const WebViewContainer({super.key});
-
-            @override
-            State<WebViewContainer> createState() => _WebViewContainerState();
-          }
-
-          class _WebViewContainerState extends State<WebViewContainer> {
-            late final WebViewController _controller;
-
-            @override
-            void initState() {
-              super.initState();
-              _controller = WebViewController()
-                ..setJavaScriptMode(JavaScriptMode.unrestricted)
-                ..loadRequest(Uri.parse('https://yourwebsite.com'));
-            }
-
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(
-                appBar: AppBar(title: const Text('Flutter WebView')),
-                body: WebViewWidget(controller: _controller),
-              );
-            }
-          }
-          EOF
-
-      - name: Build Flutter APK
-        run: |
-          cd WebViewApp
-          flutter build apk --release
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: flutter-app-release
+      - name: Upload APK         
+        uses: actions/upload-artifact@v4         
+        with:           
+          name: flutter-app-release           
           path: WebViewApp/build/app/outputs/flutter-apk/app-release.apk
