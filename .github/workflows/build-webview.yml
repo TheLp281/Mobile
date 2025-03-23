@@ -1,0 +1,130 @@
+name: Build React Native APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y openjdk-11-jdk curl wget unzip
+
+      - name: Install Node.js using NVM
+        run: |
+          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+          nvm install --lts
+
+      - name: Install Android SDK
+        run: |
+          ANDROID_SDK_URL="https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip"
+          SDK_DIR="$HOME/Android/Sdk"
+          mkdir -p "$SDK_DIR/cmdline-tools"
+          wget -q "$ANDROID_SDK_URL" -O cmdline-tools.zip
+          unzip cmdline-tools.zip -d "$SDK_DIR/cmdline-tools"
+          mv "$SDK_DIR/cmdline-tools/cmdline-tools" "$SDK_DIR/cmdline-tools/latest"
+          rm cmdline-tools.zip
+          echo "export ANDROID_HOME=$SDK_DIR" >> $GITHUB_ENV
+          echo "export PATH=$SDK_DIR/cmdline-tools/latest/bin:$SDK_DIR/platform-tools:$SDK_DIR/emulator:$PATH" >> $GITHUB_ENV
+
+      - name: Load environment variables
+        run: source $GITHUB_ENV
+
+      - name: Accept Android licenses
+        run: |
+          export ANDROID_HOME="$HOME/Android/Sdk"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          yes | sdkmanager --licenses
+
+      - name: Install Android SDK components
+        run: |
+          export ANDROID_HOME="$HOME/Android/Sdk"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      - name: Create React Native WebView App
+        run: |
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          npx react-native@latest init WebViewApp
+          cd WebViewApp
+          echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
+          npm install react-native-webview
+
+      - name: Add WebView Component
+        run: |
+          cd WebViewApp
+          cat <<EOF > App.js
+          import React from 'react';
+          import { StyleSheet, View } from 'react-native';
+          import { WebView } from 'react-native-webview';
+
+          const App = () => {
+            return (
+              <View style={styles.container}>
+                <WebView source={{ uri: 'https://yourwebsite.com' }} />
+              </View>
+            );
+          };
+
+          const styles = StyleSheet.create({
+            container: {
+              flex: 1,
+            },
+          });
+
+          export default App;
+          EOF
+
+      - name: Generate keystore
+        run: |
+          cd WebViewApp
+          keytool -genkeypair -v -storetype PKCS12 -keystore my-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-key-alias -dname "CN=Your Name, OU=Your Org, O=Your Company, L=Your City, S=Your State, C=Your Country" -storepass yourpassword -keypass yourpassword
+          mv my-release-key.jks android/app/
+
+      - name: Configure Gradle signing
+        run: |
+          cd WebViewApp
+          cat <<EOF >> android/app/build.gradle
+
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file('my-release-key.jks')
+                      storePassword 'yourpassword'
+                      keyAlias 'my-key-alias'
+                      keyPassword 'yourpassword'
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          EOF
+
+      - name: Build release APK
+        run: |
+          cd WebViewApp/android
+          ./gradlew assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release.apk
+          path: WebViewApp/android/app/build/outputs/apk/release/app-release.apk
