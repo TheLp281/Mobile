@@ -126,5 +126,19 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
-          name: app-release.apk
+          name: app-release
           path: WebViewApp/android/app/build/outputs/apk/release/app-release.apk
+
+  download-apk:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download APK
+        uses: actions/download-artifact@v3
+        with:
+          name: app-release
+          path: ./downloaded-apk
+
+      - name: List downloaded files
+        run: ls -R ./downloaded-apk
