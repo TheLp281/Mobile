@@ -85,35 +85,42 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
+        with:
+          path: Mobile
+  
       - name: Install dependencies
         run: |
           brew install node
+          npm cache clean --force
           npm install -g react-native-cli
+          cd Mobile
+          npx @react-native-community/cli init LiventCord
+          cd LiventCord
           npm install
-
+  
       - name: Install CocoaPods
         run: |
-          cd ios
+          cd Mobile/LiventCord/ios
           pod install
-
+  
       - name: Build iOS app
         run: |
-          xcodebuild -workspace ios/LiventCord.xcworkspace \
+          xcodebuild -workspace Mobile/LiventCord/ios/LiventCord.xcworkspace \
           -scheme LiventCord \
           -sdk iphoneos \
           -configuration Release \
-          archive -archivePath ios/build/LiventCord.xcarchive
-
+          archive -archivePath Mobile/LiventCord/ios/build/LiventCord.xcarchive
+  
       - name: Export .ipa file
         run: |
           xcodebuild -exportArchive \
-          -archivePath ios/build/LiventCord.xcarchive \
-          -exportOptionsPlist ios/ExportOptions.plist \
-          -exportPath ios/build/output
-
+          -archivePath Mobile/LiventCord/ios/build/LiventCord.xcarchive \
+          -exportOptionsPlist Mobile/LiventCord/ios/ExportOptions.plist \
+          -exportPath Mobile/LiventCord/ios/build/output
+  
       - name: Upload iOS .ipa
         uses: actions/upload-artifact@v4
         with:
           name: app-release.ipa
-          path: ios/build/output/*.ipa
+          path: Mobile/LiventCord/ios/build/output/*.ipa
+
