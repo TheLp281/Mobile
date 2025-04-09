@@ -1,12 +1,12 @@
-name: Build React Native App (Android & iOS)
+name: Build React Native App (Android)
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'
+        required: true
+        type: string
 
 jobs:
   build-android:
@@ -37,8 +37,8 @@ jobs:
           unzip cmdline-tools.zip -d "$SDK_DIR/cmdline-tools"
           mv "$SDK_DIR/cmdline-tools/cmdline-tools" "$SDK_DIR/cmdline-tools/latest"
           rm cmdline-tools.zip
-          echo "export ANDROID_HOME=$SDK_DIR" >> $GITHUB_ENV
-          echo "export PATH=$SDK_DIR/cmdline-tools/latest/bin:$SDK_DIR/platform-tools:$SDK_DIR/emulator:$PATH" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$SDK_DIR" >> $GITHUB_ENV
+          echo "PATH=$SDK_DIR/cmdline-tools/latest/bin:$SDK_DIR/platform-tools:$SDK_DIR/emulator:$PATH" >> $GITHUB_ENV
 
       - name: Accept Android licenses
         run: |
@@ -74,53 +74,11 @@ jobs:
           cd LiventCord/android
           ./gradlew assembleRelease
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Upload release to GitHub
+        uses: softprops/action-gh-release@v1
         with:
-          name: app-release.apk
-          path: LiventCord/android/app/build/outputs/apk/release/app-release.apk
-
-  build-ios:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          path: Mobile
-  
-      - name: Install dependencies
-        run: |
-          brew install node
-          npm cache clean --force
-          npm install -g react-native-cli
-          cd Mobile
-          npx @react-native-community/cli init LiventCord
-          cd LiventCord
-          npm install
-  
-      - name: Install CocoaPods
-        run: |
-          cd Mobile/LiventCord/ios
-          pod install
-  
-      - name: Build iOS app
-        run: |
-          xcodebuild -workspace Mobile/LiventCord/ios/LiventCord.xcworkspace \
-          -scheme LiventCord \
-          -sdk iphoneos \
-          -configuration Release \
-          archive -archivePath Mobile/LiventCord/ios/build/LiventCord.xcarchive
-  
-      - name: Export .ipa file
-        run: |
-          xcodebuild -exportArchive \
-          -archivePath Mobile/LiventCord/ios/build/LiventCord.xcarchive \
-          -exportOptionsPlist Mobile/LiventCord/ios/ExportOptions.plist \
-          -exportPath Mobile/LiventCord/ios/build/output
-  
-      - name: Upload iOS .ipa
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release.ipa
-          path: Mobile/LiventCord/ios/build/output/*.ipa
-
+          name: Release v${{ inputs.version }}
+          tag_name: v${{ inputs.version }}
+          files: LiventCord/android/app/build/outputs/apk/release/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
