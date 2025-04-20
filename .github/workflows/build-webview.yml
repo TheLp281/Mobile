@@ -1,4 +1,4 @@
-name: Build React Native App (Android)
+name: Build React Native APK
 
 on:
   workflow_dispatch:
@@ -8,9 +8,11 @@ on:
         required: true
         type: string
 
+
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -37,8 +39,11 @@ jobs:
           unzip cmdline-tools.zip -d "$SDK_DIR/cmdline-tools"
           mv "$SDK_DIR/cmdline-tools/cmdline-tools" "$SDK_DIR/cmdline-tools/latest"
           rm cmdline-tools.zip
-          echo "ANDROID_HOME=$SDK_DIR" >> $GITHUB_ENV
-          echo "PATH=$SDK_DIR/cmdline-tools/latest/bin:$SDK_DIR/platform-tools:$SDK_DIR/emulator:$PATH" >> $GITHUB_ENV
+          echo "export ANDROID_HOME=$SDK_DIR" >> $GITHUB_ENV
+          echo "export PATH=$SDK_DIR/cmdline-tools/latest/bin:$SDK_DIR/platform-tools:$SDK_DIR/emulator:$PATH" >> $GITHUB_ENV
+
+      - name: Load environment variables
+        run: source $GITHUB_ENV
 
       - name: Accept Android licenses
         run: |
@@ -61,13 +66,58 @@ jobs:
           echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
           npm install react-native-webview
 
+      - name: Add WebView Component
+        run: |
+          cd LiventCord
+          cat <<EOF > App.js
+          import React from 'react';
+          import { StyleSheet, View } from 'react-native';
+          import { WebView } from 'react-native-webview';
+
+          const App = () => {
+            return (
+              <View style={styles.container}>
+                <WebView source={{ uri: 'https://liventcord.github.io/LiventCord/app' }} />
+              </View>
+            );
+          };
+
+          const styles = StyleSheet.create({
+            container: {
+              flex: 1,
+            },
+          });
+
+          export default App;
+          EOF
+
+      - name: Generate keystore
+        run: |
+          cd LiventCord
+          keytool -genkeypair -v -storetype PKCS12 -keystore my-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias my-key-alias -dname "CN=Your Name, OU=Your Org, O=Your Company, L=Your City, S=Your State, C=Your Country" -storepass yourpassword -keypass yourpassword
+          mv my-release-key.jks android/app/
+
       - name: Configure Gradle signing
         run: |
           cd LiventCord
-          echo "MYAPP_RELEASE_STORE_FILE=my-release-key.jks" >> android/gradle.properties
-          echo "MYAPP_RELEASE_KEY_ALIAS=my-key-alias" >> android/gradle.properties
-          echo "MYAPP_RELEASE_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> android/gradle.properties
-          echo "MYAPP_RELEASE_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/gradle.properties
+          cat <<EOF >> android/app/build.gradle
+
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file('my-release-key.jks')
+                      storePassword 'yourpassword'
+                      keyAlias 'my-key-alias'
+                      keyPassword 'yourpassword'
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          EOF
 
       - name: Build release APK
         run: |
