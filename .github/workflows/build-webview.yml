@@ -8,7 +8,6 @@ on:
         required: true
         type: string
 
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,7 +26,6 @@ jobs:
           curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
           nvm install --lts
 
       - name: Install Android SDK
@@ -66,30 +64,49 @@ jobs:
           echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
           npm install react-native-webview
 
-      - name: Add WebView Component
+      - name: Add SafeAreaView WebView Component
         run: |
           cd LiventCord
           cat <<EOF > App.js
           import React from 'react';
-          import { StyleSheet, View } from 'react-native';
+          import { SafeAreaView, StyleSheet, StatusBar, Platform } from 'react-native';
           import { WebView } from 'react-native-webview';
 
           const App = () => {
             return (
-              <View style={styles.container}>
-                <WebView source={{ uri: 'https://liventcord.github.io/LiventCord/app' }} />
-              </View>
+              <SafeAreaView style={styles.safeArea}>
+                <StatusBar
+                  translucent
+                  backgroundColor="transparent"
+                  barStyle="dark-content"
+                />
+                <WebView
+                  source={{ uri: 'https://liventcord.github.io/LiventCord/app' }}
+                  style={styles.webview}
+                />
+              </SafeAreaView>
             );
           };
 
           const styles = StyleSheet.create({
-            container: {
+            safeArea: {
+              flex: 1,
+              paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+            },
+            webview: {
               flex: 1,
             },
           });
 
           export default App;
           EOF
+
+      - name: Modify AndroidManifest.xml for fullscreen layout
+        run: |
+          cd LiventCord
+          sed -i '/<application/a \        android:usesCleartextTraffic="true"' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:theme="@style\/AppTheme"/android:theme="@style\/AppTheme.NoActionBar"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/<activity /<activity android:exported="true" android:theme="@style\/Theme.AppCompat.Light.NoActionBar.FullScreen" /' android/app/src/main/AndroidManifest.xml
 
       - name: Generate keystore
         run: |
@@ -114,6 +131,9 @@ jobs:
               buildTypes {
                   release {
                       signingConfig signingConfigs.release
+                      minifyEnabled false
+                      shrinkResources false
+                      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
                   }
               }
           }
