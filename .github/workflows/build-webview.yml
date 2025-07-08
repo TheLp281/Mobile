@@ -100,7 +100,15 @@ jobs:
 
           export default App;
           EOF
+      - name: Configure gradle.properties
+        run: |
+          cd LiventCord
+          cat <<EOF >> android/gradle.properties
 
+          # Disable Hermes and New Architecture to avoid NDK/CMake errors
+          newArchEnabled=false
+          HermesEnabled=false
+          EOF
       - name: Modify AndroidManifest.xml for fullscreen layout
         run: |
           cd LiventCord
