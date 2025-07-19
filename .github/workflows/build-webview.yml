@@ -69,22 +69,33 @@ jobs:
       - name: Add WebView Component
         run: |
           cd LiventCord
+          npm install react-native-safe-area-context
           cat <<EOF > App.js
           import React from 'react';
-          import { StyleSheet, SafeAreaView } from 'react-native';
+          import { StyleSheet, View } from 'react-native';
           import { WebView } from 'react-native-webview';
+          import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-          const App = () => {
+          const WebViewWithInsets = () => {
+            const insets = useSafeAreaInsets();
+
             return (
-              <SafeAreaView style={styles.container}>
+              <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
                 <WebView source={{ uri: 'https://liventcord.github.io/LiventCord/app' }} style={styles.webview} />
-              </SafeAreaView>
+              </View>
             );
           };
+
+          const App = () => (
+            <SafeAreaProvider>
+              <WebViewWithInsets />
+            </SafeAreaProvider>
+          );
 
           const styles = StyleSheet.create({
             container: {
               flex: 1,
+              backgroundColor: '#fff',
             },
             webview: {
               flex: 1,
@@ -93,6 +104,7 @@ jobs:
 
           export default App;
           EOF
+
 
       - name: Generate keystore
         run: |
