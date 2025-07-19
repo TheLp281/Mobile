@@ -121,6 +121,10 @@ jobs:
               }
           }
           EOF
+      - name: Disable Fabric & Codegen
+        run: |
+          cd LiventCord
+          echo "newArchEnabled=false" >> android/gradle.properties
 
       - name: Build release APK
         run: |
