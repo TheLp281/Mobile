@@ -71,19 +71,22 @@ jobs:
           cd LiventCord
           cat <<EOF > App.js
           import React from 'react';
-          import { StyleSheet, View } from 'react-native';
+          import { StyleSheet, SafeAreaView } from 'react-native';
           import { WebView } from 'react-native-webview';
 
           const App = () => {
             return (
-              <View style={styles.container}>
-                <WebView source={{ uri: 'https://liventcord.github.io/LiventCord/app' }} />
-              </View>
+              <SafeAreaView style={styles.container}>
+                <WebView source={{ uri: 'https://liventcord.github.io/LiventCord/app' }} style={styles.webview} />
+              </SafeAreaView>
             );
           };
 
           const styles = StyleSheet.create({
             container: {
+              flex: 1,
+            },
+            webview: {
               flex: 1,
             },
           });
