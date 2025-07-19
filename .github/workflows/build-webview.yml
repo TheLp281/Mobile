@@ -70,7 +70,7 @@ jobs:
         run: |
           cd LiventCord
           npm install react-native-navigation-bar-color
-          npx react-native link react-native-navigation-bar-color
+          npx react-native react-native-navigation-bar-color
 
       - name: Add WebView Component
         run: |
