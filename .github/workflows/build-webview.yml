@@ -76,10 +76,11 @@ jobs:
           cd LiventCord
           npm install react-native-webview react-native-safe-area-context react-native-navigation-bar-color react-native-fs https://github.com/nmartinezb3/react-native-http-server.git --legacy-peer-deps
       
-      - name: Patch http-server-react-native Gradle build file
+      - name: Patch http-server-react-native Gradle build file with perl
         run: |
-          sed -i 's/compile(/implementation(/g' LiventCord/node_modules/http-server-react-native/android/build.gradle
-      
+          perl -pi -e 's/compile\(/implementation(/g' LiventCord/node_modules/http-server-react-native/android/build.gradle
+      entation(/g' LiventCord/node_modules/http-server-react-native/android/build.gradle
+            
       - name: Create App.js and continue...
         run: |
           cd LiventCord
