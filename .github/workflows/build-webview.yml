@@ -63,141 +63,77 @@ jobs:
           npx @react-native-community/cli init LiventCord
           cd LiventCord
           echo "sdk.dir=$HOME/Android/Sdk" > android/local.properties
-          npm install react-native-webview
-          
+          npm install react-native-webview react-native-fs
+
       - name: Install Navigation Bar Color Module
         run: |
           cd LiventCord
-          npm install react-native-navigation-bar-color
-          
-      - name: Setup React Native WebView with Local HTTP Server (Media Bridge)
-        run: |
-          cd LiventCord
-          npm install react-native-webview react-native-safe-area-context react-native-navigation-bar-color react-native-fs https://github.com/nmartinezb3/react-native-http-server.git --legacy-peer-deps
-      
-      - name: Patch http-server-react-native Gradle build file with perl
-        run: |
-          perl -pi -e 's/compile\(/implementation(/g' LiventCord/node_modules/http-server-react-native/android/build.gradle
+          npm install react-native-navigation-bar-color react-native-safe-area-context
 
-      - name: Create App.js and continue...
+      - name: Add WebView Component with IPC
         run: |
           cd LiventCord
           cat <<EOF > App.js
-          import React, { useEffect, useRef, useState } from 'react';
-          import { View, StyleSheet, Platform, StatusBar } from 'react-native';
+          import React, { useEffect, useRef } from 'react';
+          import { StyleSheet, View, StatusBar, Platform } from 'react-native';
           import { WebView } from 'react-native-webview';
           import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
           import changeNavigationBarColor from 'react-native-navigation-bar-color';
-          import { HttpServer } from 'react-native-http-server';
           import RNFS from 'react-native-fs';
-      
-          const MEDIA_DIR = RNFS.DocumentDirectoryPath + '/media';
-      
-          const App = () => {
-            const webViewRef = useRef(null);
-            const [origin, setOrigin] = useState(null);
+
+          const WebViewWithInsets = () => {
             const insets = useSafeAreaInsets();
-      
+            const webViewRef = useRef(null);
+
             useEffect(() => {
               StatusBar.setBackgroundColor('#151319');
               StatusBar.setBarStyle('light-content');
-      
               if (Platform.OS === 'android') {
                 changeNavigationBarColor('#2d2d32', false, false);
               }
-      
-              const startServer = async () => {
-                await RNFS.mkdir(MEDIA_DIR);
-      
-                const server = new HttpServer({ port: 8080 });
-      
-                server.get('/media/:filename', async (req) => {
-                  const filePath = \`\${MEDIA_DIR}/\${req.params.filename}\`;
-                  const exists = await RNFS.exists(filePath);
-                  if (!exists) {
-                    return { status: 404, body: 'File not found' };
-                  }
-                  const contentType = filePath.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg';
-                  const fileData = await RNFS.readFile(filePath, 'base64');
-                  return {
-                    status: 200,
-                    headers: { 'Content-Type': contentType },
-                    body: Buffer.from(fileData, 'base64'),
-                    isBase64Encoded: true,
-                  };
-                });
-      
-                await server.start();
-                setOrigin('http://localhost:8080');
-              };
-      
-              startServer();
             }, []);
-      
+
             const handleMessage = async (event) => {
-              const msg = JSON.parse(event.nativeEvent.data);
-              if (msg.type === 'load-media') {
-                const filePath = \`\${MEDIA_DIR}/\${msg.name}\`;
-                if (!(await RNFS.exists(filePath))) {
-                  await RNFS.downloadFile({ fromUrl: msg.url, toFile: filePath }).promise;
+              try {
+                const data = JSON.parse(event.nativeEvent.data);
+                if (data.type === 'fetch' && data.url) {
+                  const filename = data.url.split('/').pop();
+                  const localPath = RNFS.CachesDirectoryPath + '/' + filename;
+                  await RNFS.downloadFile({ fromUrl: data.url, toFile: localPath }).promise;
+                  webViewRef.current.injectJavaScript(\`window.dispatchEvent(new MessageEvent('native-response', { data: "\${localPath}" }));\`);
                 }
-                webViewRef.current?.postMessage(JSON.stringify({
-                  type: 'media-loaded',
-                  tagId: msg.tagId,
-                  url: \`\${origin}/media/\${msg.name}\`,
-                }));
+              } catch (e) {
+                console.error('IPC Error', e);
               }
             };
-      
-            const injectedJS = \`
-              window.nativeMedia = {
-                load(tagId, fileName, url) {
-                  window.ReactNativeWebView.postMessage(JSON.stringify({
-                    type: 'load-media',
-                    tagId,
-                    name: fileName,
-                    url
-                  }));
-                },
-              };
-      
-              document.addEventListener('message', function(event) {
-                const data = JSON.parse(event.data);
-                if (data.type === 'media-loaded') {
-                  const el = document.getElementById(data.tagId);
-                  if (el) el.src = data.url;
-                }
-              });
-            \`;
-      
+
             return (
-              <SafeAreaProvider>
-                <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-                  {origin && (
-                    <WebView
-                      ref={webViewRef}
-                      originWhitelist={['*']}
-                      onMessage={handleMessage}
-                      injectedJavaScriptBeforeContentLoaded={injectedJS}
-                      allowFileAccess
-                      allowUniversalAccessFromFileURLs
-                    />
-                  )}
-                </View>
-              </SafeAreaProvider>
+              <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+                <WebView
+                  ref={webViewRef}
+                  source={{ uri: 'https://liventcord.github.io/LiventCord/app' }}
+                  style={styles.webview}
+                  onMessage={handleMessage}
+                  javaScriptEnabled
+                  domStorageEnabled
+                />
+              </View>
             );
           };
-      
+
+          const App = () => (
+            <SafeAreaProvider>
+              <WebViewWithInsets />
+            </SafeAreaProvider>
+          );
+
           const styles = StyleSheet.create({
-            container: {
-              flex: 1,
-              backgroundColor: '#151319',
-            },
+            container: { flex: 1, backgroundColor: '#fff' },
+            webview: { flex: 1 },
           });
-      
+
           export default App;
           EOF
-
 
       - name: Generate keystore
         run: |
@@ -226,6 +162,7 @@ jobs:
               }
           }
           EOF
+
       - name: Disable Fabric & Codegen
         run: |
           cd LiventCord
