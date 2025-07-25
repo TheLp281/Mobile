@@ -78,8 +78,7 @@ jobs:
       - name: Patch http-server-react-native Gradle build file with perl
         run: |
           perl -pi -e 's/compile\(/implementation(/g' LiventCord/node_modules/http-server-react-native/android/build.gradle
-      entation(/g' LiventCord/node_modules/http-server-react-native/android/build.gradle
-            
+
       - name: Create App.js and continue...
         run: |
           cd LiventCord
