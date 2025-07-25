@@ -71,18 +71,21 @@ jobs:
           cd LiventCord
           npm install react-native-navigation-bar-color
 
-      - name: Add WebView Component with Local Media IPC
+      - name: Setup React Native WebView with Local HTTP Server (Media Bridge)
         run: |
           cd LiventCord
-          npm install react-native-safe-area-context react-native-navigation-bar-color react-native-static-server react-native-fs
+          npm install react-native-webview react-native-safe-area-context react-native-navigation-bar-color react-native-fs https://github.com/nmartinezb3/react-native-http-server.git
+      
           cat <<EOF > App.js
           import React, { useEffect, useRef, useState } from 'react';
-          import { StyleSheet, View, StatusBar, Platform } from 'react-native';
+          import { View, StyleSheet, Platform, StatusBar } from 'react-native';
           import { WebView } from 'react-native-webview';
           import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
           import changeNavigationBarColor from 'react-native-navigation-bar-color';
-          import StaticServer from 'react-native-static-server';
+          import { HttpServer } from 'react-native-http-server';
           import RNFS from 'react-native-fs';
+      
+          const MEDIA_DIR = RNFS.DocumentDirectoryPath + '/media';
       
           const App = () => {
             const webViewRef = useRef(null);
@@ -98,11 +101,28 @@ jobs:
               }
       
               const startServer = async () => {
-                const mediaDir = RNFS.DocumentDirectoryPath + '/media';
-                await RNFS.mkdir(mediaDir);
-                const server = new StaticServer(8080, RNFS.DocumentDirectoryPath, { localOnly: true });
-                const localOrigin = await server.start();
-                setOrigin(localOrigin);
+                await RNFS.mkdir(MEDIA_DIR);
+      
+                const server = new HttpServer({ port: 8080 });
+      
+                server.get('/media/:filename', async (req) => {
+                  const filePath = \`\${MEDIA_DIR}/\${req.params.filename}\`;
+                  const exists = await RNFS.exists(filePath);
+                  if (!exists) {
+                    return { status: 404, body: 'File not found' };
+                  }
+                  const contentType = filePath.endsWith('.mp4') ? 'video/mp4' : 'image/jpeg';
+                  const fileData = await RNFS.readFile(filePath, 'base64');
+                  return {
+                    status: 200,
+                    headers: { 'Content-Type': contentType },
+                    body: Buffer.from(fileData, 'base64'),
+                    isBase64Encoded: true,
+                  };
+                });
+      
+                await server.start();
+                setOrigin('http://localhost:8080');
               };
       
               startServer();
@@ -110,21 +130,15 @@ jobs:
       
             const handleMessage = async (event) => {
               const msg = JSON.parse(event.nativeEvent.data);
-              const mediaDir = RNFS.DocumentDirectoryPath + '/media';
-      
               if (msg.type === 'load-media') {
-                const fileName = msg.name;
-                const filePath = \`\${mediaDir}/\${fileName}\`;
-                const url = msg.url;
-      
+                const filePath = \`\${MEDIA_DIR}/\${msg.name}\`;
                 if (!(await RNFS.exists(filePath))) {
-                  await RNFS.downloadFile({ fromUrl: url, toFile: filePath }).promise;
+                  await RNFS.downloadFile({ fromUrl: msg.url, toFile: filePath }).promise;
                 }
-      
                 webViewRef.current?.postMessage(JSON.stringify({
                   type: 'media-loaded',
                   tagId: msg.tagId,
-                  url: \`\${origin}/media/\${fileName}\`,
+                  url: \`\${origin}/media/\${msg.name}\`,
                 }));
               }
             };
@@ -148,9 +162,8 @@ jobs:
                   if (el) el.src = data.url;
                 }
               });
-          \`;
+            \`;
       
-
             return (
               <SafeAreaProvider>
                 <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
@@ -158,11 +171,10 @@ jobs:
                     <WebView
                       ref={webViewRef}
                       originWhitelist={['*']}
-                      source={{ html: htmlContent }}
                       onMessage={handleMessage}
                       injectedJavaScriptBeforeContentLoaded={injectedJS}
-                      allowFileAccess={true}
-                      allowUniversalAccessFromFileURLs={true}
+                      allowFileAccess
+                      allowUniversalAccessFromFileURLs
                     />
                   )}
                 </View>
