@@ -111,7 +111,7 @@ jobs:
               <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
                 <WebView
                   ref={webViewRef}
-                  source={{ uri: 'https://liventcord.github.io/LiventCord/app' }}
+                  source={{ uri: 'http://192.168.1.30:5173' }}
                   style={styles.webview}
                   onMessage={handleMessage}
                   javaScriptEnabled
