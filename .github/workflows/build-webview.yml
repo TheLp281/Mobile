@@ -74,7 +74,7 @@ jobs:
       - name: Setup React Native WebView with Local HTTP Server (Media Bridge)
         run: |
           cd LiventCord
-          npm install react-native-webview react-native-safe-area-context react-native-navigation-bar-color react-native-fs https://github.com/nmartinezb3/react-native-http-server.git
+          npm install react-native-webview react-native-safe-area-context react-native-navigation-bar-color react-native-fs https://github.com/nmartinezb3/react-native-http-server.git --legacy-peer-deps
       
           cat <<EOF > App.js
           import React, { useEffect, useRef, useState } from 'react';
